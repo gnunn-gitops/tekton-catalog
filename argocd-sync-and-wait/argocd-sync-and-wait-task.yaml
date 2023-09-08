@@ -3,7 +3,7 @@ kind: Task
 metadata:
   name: argocd-task-sync-and-wait
   labels:
-    app.kubernetes.io/version: "0.2"
+    app.kubernetes.io/version: "1.0"
   annotations:
     tekton.dev/pipelines.minVersion: "0.12.1"
     tekton.dev/categories: Deployment
