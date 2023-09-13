@@ -16,7 +16,6 @@ spec:
 
     To do so, it requires the address of the Argo CD server and some form of
     authentication either a username/password or an authentication token.
-
   params:
     - name: deployment
       description: name of the deployment
