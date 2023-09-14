@@ -22,10 +22,13 @@ spec:
   results:
   - description: The short commit SHA that was fetched by this Task
     name: short_commit
+    type: string
   - description: Unique build identifier
     name: build_uid
+    type: string
   - description: Unique tag identifier
     name: tag_id
+    type: string
   stepTemplate:
     env:
       - name: "HOME"
