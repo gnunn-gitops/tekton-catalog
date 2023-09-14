@@ -1,0 +1,25 @@
+apiVersion: tekton.dev/v1beta1
+kind: ClusterTask
+metadata:
+  name: release-lease
+  labels:
+    app.kubernetes.io/version: "1.0"
+  annotations:
+    tekton.dev/pipelines.minVersion: "0.17.0"
+    tekton.dev/categories: Continuous Integration
+    tekton.dev/tags: concurrency
+    tekton.dev/displayName: "Release Lease"
+    tekton.dev/platforms: "linux/amd64"
+spec:
+  description: >-
+    This task releases a named lease that was previously acquired with the
+    acquire-lease task.
+
+    This task when paired with acquire-lease is useful for managing pipeline concurrency.
+  params:
+  - name: lease-name
+    type: string
+  steps:
+    - name: delete-lease
+      image: image-registry.openshift-image-registry.svc:5000/openshift/cli:latest
+      script: kubectl delete lease $(params.lease-name) --ignore-not-found=true
