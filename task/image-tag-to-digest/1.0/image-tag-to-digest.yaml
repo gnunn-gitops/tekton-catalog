@@ -1,0 +1,40 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: image-tag-to-digest
+  labels:
+    app.kubernetes.io/version: "1.0"
+  annotations:
+    tekton.dev/pipelines.minVersion: "0.17.0"
+    tekton.dev/categories: Image Build
+    tekton.dev/tags: image, digest, tag
+    tekton.dev/displayName: "Image Tag to Digest"
+    tekton.dev/platforms: "linux/amd64"
+spec:
+  description: >-
+    Task returns the image digest for the specified tag.
+
+    This can be useful when you have a tag but another tool in the pipeline
+    requires the digest such as ACS.
+
+  params:
+    - name: image_dest_url
+      description: The location of the image without the tag
+      type: string
+    - name: image_dest_tag
+      description: the tag of the image to return the hash for
+      type: string
+  results:
+  - description: The digest for the image created
+    name: image_digest
+  steps:
+    - name: get-image-digest
+      image: quay.io/gnunn/tools:4.10-1
+      script: |
+        #!/usr/bin/env bash
+
+        DIGEST=$(skopeo inspect docker://$(params.image_dest_url):$(params.image_dest_tag) | jq -r .Digest)
+
+        echo "Digest for image $(params.image_dest_url):$(params.image_dest_tag) is '${DIGEST}'"
+
+        echo -n "$DIGEST" > $(results.image_digest.path)
