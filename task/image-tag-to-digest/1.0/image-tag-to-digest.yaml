@@ -27,6 +27,7 @@ spec:
   results:
   - description: The digest for the image created
     name: image_digest
+    type: string
   steps:
     - name: get-image-digest
       image: quay.io/gnunn/tools:4.10-1
