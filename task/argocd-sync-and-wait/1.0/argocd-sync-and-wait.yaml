@@ -44,8 +44,7 @@ spec:
     - name: wait-and-sync
       image: quay.io/gnunn/tools:latest
       script: |
-
-        sleep 5
+        sleep 10
 
         alias argocd='argocd --insecure'
 
