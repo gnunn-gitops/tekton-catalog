@@ -45,6 +45,8 @@ spec:
       image: quay.io/gnunn/tools:latest
       script: |
 
+        sleep 5
+
         alias argocd='argocd --insecure'
 
         if [ -z "$ARGOCD_AUTH_TOKEN" ]; then
