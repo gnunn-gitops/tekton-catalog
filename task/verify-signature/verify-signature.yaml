@@ -1,0 +1,49 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: verify-signature
+  labels:
+    app.kubernetes.io/version: "1.0"
+  annotations:
+    tekton.dev/pipelines.minVersion: "0.17.0"
+    tekton.dev/categories: Security
+    tekton.dev/tags: signatures
+    tekton.dev/displayName: "Verify Signature"
+    tekton.dev/platforms: "linux/amd64"
+spec:
+  description: >-
+    Verifies that an image has been properly signed by Red Hat
+    Trusted Application Signer (RHTAS).
+  params:
+  - name: tuf_url
+    type: string
+  - name: oidc_issuer_url
+    type: string
+  - name: fucio_url
+    type: string
+  - name: rekor_url
+    type: string
+  - name: certificate_identity
+    type: string
+  - name: image_url
+    type: string
+  steps:
+    - name: verify
+      image: registry.redhat.io/rhtas/cosign-rhel9:1.0.0
+      script: |
+        export TUF_URL=${tuf_url)
+        export OIDC_ISSUER_URL=$(oidc_url)
+        export COSIGN_FULCIO_URL=$(fulcio_url)
+        export COSIGN_REKOR_URL=$(rekor_url)
+        export COSIGN_MIRROR=$TUF_URL
+        export COSIGN_ROOT=$TUF_URL/root.json
+        export COSIGN_OIDC_CLIENT_ID="trusted-artifact-signer"
+        export COSIGN_OIDC_ISSUER=$OIDC_ISSUER_URL
+        export COSIGN_CERTIFICATE_OIDC_ISSUER=$OIDC_ISSUER_URL
+        export COSIGN_YES="true"
+        export SIGSTORE_FULCIO_URL=$COSIGN_FULCIO_URL
+        export SIGSTORE_OIDC_ISSUER=$COSIGN_OIDC_ISSUER
+        export SIGSTORE_REKOR_URL=$COSIGN_REKOR_URL
+        export REKOR_REKOR_SERVER=$COSIGN_REKOR_URL
+
+        cosign verify --certificate-identity=${certificate_identity} ${image_url}
