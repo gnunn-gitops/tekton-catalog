@@ -29,7 +29,6 @@ spec:
     type: string
   steps:
     - name: verify
-      workingDir: $(workspaces.source.path)
       image: registry.redhat.io/rhtas/cosign-rhel9:1.0.0
       script: |
         #!/usr/bin/env bash
