@@ -31,6 +31,12 @@ spec:
     - name: verify
       image: registry.redhat.io/rhtas/cosign-rhel9:1.0.0
       script: |
+        #!/bin/bash
+
+        echo "TUF URL: $(tuf_url)"
+        echo "OIDC_ISSUER_URL: $(oidc_url)"
+        echo "FULCIO_URL: $(fulcio_url)"
+        echo "REKOR_URL: $(rekor_url)"
 
         export TUF_URL=$(tuf_url)
         export OIDC_ISSUER_URL=$(oidc_url)
