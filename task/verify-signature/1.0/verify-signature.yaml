@@ -19,7 +19,7 @@ spec:
     type: string
   - name: oidc_issuer_url
     type: string
-  - name: fucio_url
+  - name: fulcio_url
     type: string
   - name: rekor_url
     type: string
@@ -33,15 +33,10 @@ spec:
       script: |
         #!/usr/bin/env bash
 
-        echo "TUF URL: $(tuf_url)"
-        echo "OIDC_ISSUER_URL: $(oidc_url)"
-        echo "FULCIO_URL: $(fulcio_url)"
-        echo "REKOR_URL: $(rekor_url)"
-
-        export TUF_URL=$(tuf_url)
-        export OIDC_ISSUER_URL=$(oidc_url)
-        export COSIGN_FULCIO_URL=$(fulcio_url)
-        export COSIGN_REKOR_URL=$(rekor_url)
+        export TUF_URL=$(params.tuf_url)
+        export OIDC_ISSUER_URL=$(params.oidc_issuer_url)
+        export COSIGN_FULCIO_URL=$(params.fulcio_url)
+        export COSIGN_REKOR_URL=$(params.rekor_url)
         export COSIGN_MIRROR=$TUF_URL
         export COSIGN_ROOT=$TUF_URL/root.json
         export COSIGN_OIDC_CLIENT_ID="trusted-artifact-signer"
@@ -53,4 +48,4 @@ spec:
         export SIGSTORE_REKOR_URL=$COSIGN_REKOR_URL
         export REKOR_REKOR_SERVER=$COSIGN_REKOR_URL
 
-        cosign verify --certificate-identity=$(certificate_identity) $(image_url)
+        cosign verify --certificate-identity=$(params.certificate_identity) $(params.image_url)
