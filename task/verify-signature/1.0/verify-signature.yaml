@@ -27,6 +27,12 @@ spec:
     type: string
   - name: image_url
     type: string
+  - name: retries
+    type: string
+    default: "3"
+  - name: delay
+    type: string
+    default: "20"
   steps:
     - name: verify
       image: registry.redhat.io/rhtas/cosign-rhel9:1.0.0
@@ -49,4 +55,14 @@ spec:
         export REKOR_REKOR_SERVER=$COSIGN_REKOR_URL
 
         cosign initialize
-        cosign verify --certificate-identity=$(params.certificate_identity) $(params.image_url)
+
+        retries=$(params.retries)
+        for ((i=0; i<retries; i++)); do
+            cosign verify --certificate-identity=$(params.certificate_identity) $(params.image_url)
+            [[ $? -eq 0 ]] && break
+            echo "Signature check failed, let's wait $(params.delay) seconds and retry"
+            sleep $(params.delay)
+        done
+
+        (( retries == i )) && { echo 'Failed!'; exit 1; }
+        exit 0
