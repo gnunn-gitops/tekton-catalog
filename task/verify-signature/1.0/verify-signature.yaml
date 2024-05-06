@@ -31,7 +31,8 @@ spec:
     - name: verify
       image: registry.redhat.io/rhtas/cosign-rhel9:1.0.0
       script: |
-        export TUF_URL=${tuf_url)
+
+        export TUF_URL=$(tuf_url)
         export OIDC_ISSUER_URL=$(oidc_url)
         export COSIGN_FULCIO_URL=$(fulcio_url)
         export COSIGN_REKOR_URL=$(rekor_url)
@@ -46,4 +47,4 @@ spec:
         export SIGSTORE_REKOR_URL=$COSIGN_REKOR_URL
         export REKOR_REKOR_SERVER=$COSIGN_REKOR_URL
 
-        cosign verify --certificate-identity=${certificate_identity} ${image_url}
+        cosign verify --certificate-identity=$(certificate_identity) $(image_url)
