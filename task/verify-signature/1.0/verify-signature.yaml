@@ -48,4 +48,5 @@ spec:
         export SIGSTORE_REKOR_URL=$COSIGN_REKOR_URL
         export REKOR_REKOR_SERVER=$COSIGN_REKOR_URL
 
+        cosign initialize
         cosign verify --certificate-identity=$(params.certificate_identity) $(params.image_url)
