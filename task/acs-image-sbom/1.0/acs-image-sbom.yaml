@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
-  name: acs-image-check
+  name: acs-image-sbom
   namespace: pipeline-demo
   labels:
     app.kubernetes.io/version: "1.0"
@@ -9,11 +9,11 @@ metadata:
     tekton.dev/pipelines.minVersion: "0.17.0"
     tekton.dev/categories: Security
     tekton.dev/tags: security
-    tekton.dev/displayName: "ACS Image Check"
+    tekton.dev/displayName: "ACS Image SBOM"
     tekton.dev/platforms: "linux/amd64"
 spec:
   description: >-
-    This task performs an image policy check using ACS and roxctl.
+    This task generates an image SBOM using ACS and roxctl.
 
   params:
     - name: image
@@ -41,11 +41,6 @@ spec:
         export ROX_CENTRAL_ENDPOINT=$(cat $(workspaces.acs-central.path)/rox_central_endpoint)
         export ROX_API_TOKEN=$(cat $(workspaces.acs-central.path)/rox_api_token)
 
-        echo "Checking policies with endpoint ${ROX_CENTRAL_ENDPOINT}"
+        echo "Generating SBOM using endpoint ${ROX_CENTRAL_ENDPOINT}"
 
-        if roxctl image check --insecure-skip-tls-verify -e $ROX_CENTRAL_ENDPOINT --image $(params.image); then
-          echo -n "true" > $(results.check_passed.path)
-        else
-          echo -n "false" > $(results.check_passed.path)
-        fi
-        cd .
+        roxctl image sbom --insecure-skip-tls-verify -e $ROX_CENTRAL_ENDPOINT --image $(params.image) --output $(params.output_format)
