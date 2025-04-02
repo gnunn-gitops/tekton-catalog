@@ -40,4 +40,4 @@ spec:
 
         echo "Generating SBOM using endpoint ${ROX_CENTRAL_ENDPOINT}"
 
-        roxctl image sbom --insecure-skip-tls-verify -e $ROX_CENTRAL_ENDPOINT --image $(params.image) --output $(params.output_format)
+        roxctl image sbom --insecure-skip-tls-verify -e $ROX_CENTRAL_ENDPOINT --image $(params.image)
