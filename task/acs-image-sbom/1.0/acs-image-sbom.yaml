@@ -19,15 +19,12 @@ spec:
     - name: image
       type: string
       description: Full name of image to scan (example -- gcr.io/rox/sample:5.0-rc1)
-  results:
-      - name: check_passed
-        description: Whether the task passed or failed, "true" for a pass, "false" for a fail.
   workspaces:
     - name: acs-central
       description: The secret with the central endpoint (rox-central_endpoint) and api token (rox_api_token)
       optional: true
   steps:
-    - name: rox-image-check
+    - name: rox-generate-sbom
       image: registry.redhat.io/advanced-cluster-security/rhacs-roxctl-rhel8:4.7
       script: |
         #!/usr/bin/env bash
