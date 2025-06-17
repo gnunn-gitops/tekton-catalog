@@ -14,11 +14,13 @@ metadata:
 spec:
   description: >-
     This task generates an image SBOM using ACS and roxctl.
-
   params:
     - name: image
       type: string
       description: Full name of image to scan (example -- gcr.io/rox/sample:5.0-rc1)
+    - name: cyclonedxHostUrl
+      type: string
+      default: ignore
   workspaces:
     - name: acs-central
       description: The secret with the central endpoint (rox-central_endpoint) and api token (rox_api_token)
@@ -39,5 +41,21 @@ spec:
         export ROX_API_TOKEN=$(cat $(workspaces.acs-central.path)/rox_api_token)
 
         echo "Generating SBOM using endpoint ${ROX_CENTRAL_ENDPOINT}"
+        roxctl image sbom --insecure-skip-tls-verify -e $ROX_CENTRAL_ENDPOINT --image $(params.image) > /workspace/sbom.json
+        cat workspace/sbom.json | jq .
+    - name: export sbom
+      image: 'ubi9/ubi'
+      script: >
+        set +x
 
-        roxctl image sbom --insecure-skip-tls-verify -e $ROX_CENTRAL_ENDPOINT --image $(params.image) | jq .
+        if [ "$(params.cyclonedxHostUrl)" = "ignore" ]; then
+          echo "Export skipped"
+        else
+          curl -X POST $(params.cyclonedxHostUrl)/v1/bom -H "Content-Type: application/vnd.cyclonedx+json; version=1.4" -H "Accept: */*" -d @/workspace/sbom.json -D /tmp/header.txt > /dev/null
+
+          LOCATION=$(cat /tmp/header.txt | grep location: | awk '{print $2}' | sed 's|http:|https:|g')
+
+          echo $LOCATION
+
+          printf "%s" "$LOCATION" > "$(results.sbomUrl.path)"
+        fi
