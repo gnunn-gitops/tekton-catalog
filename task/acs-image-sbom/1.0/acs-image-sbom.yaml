@@ -25,7 +25,7 @@ spec:
       optional: true
   steps:
     - name: rox-generate-sbom
-      image: quay.io/gnunn/tools:4.18
+      image: quay.io/gnunn/tools:v4.18
       script: |
         #!/usr/bin/env bash
         set +x
