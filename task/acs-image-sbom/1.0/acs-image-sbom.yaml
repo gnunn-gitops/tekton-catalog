@@ -47,7 +47,7 @@ spec:
         echo "Generating SBOM using endpoint ${ROX_CENTRAL_ENDPOINT}"
         roxctl image sbom --insecure-skip-tls-verify -e $ROX_CENTRAL_ENDPOINT --image $(params.image) > /workspace/sbom.json
         cat workspace/sbom.json | jq .
-    - name: export sbom
+    - name: export-sbom
       image: 'ubi9/ubi'
       script: >
         set +x
