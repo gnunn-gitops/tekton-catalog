@@ -29,6 +29,10 @@ spec:
     - name: acs-central
       description: The secret with the central endpoint (rox-central_endpoint) and api token (rox_api_token)
       optional: true
+  stepTemplate:
+    env:
+      - name: "HOME"
+        value: "/tekton/home"
   steps:
     - name: rox-generate-sbom
       image: quay.io/gnunn/tools:v4.18
