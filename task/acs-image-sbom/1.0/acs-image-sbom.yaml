@@ -25,7 +25,7 @@ spec:
       optional: true
   steps:
     - name: rox-generate-sbom
-      image: registry.redhat.io/advanced-cluster-security/rhacs-roxctl-rhel8:4.7
+      image: quay.io/gnunn/tools:4.18
       script: |
         #!/usr/bin/env bash
         set +x
@@ -40,4 +40,4 @@ spec:
 
         echo "Generating SBOM using endpoint ${ROX_CENTRAL_ENDPOINT}"
 
-        roxctl image sbom --insecure-skip-tls-verify -e $ROX_CENTRAL_ENDPOINT --image $(params.image)
+        roxctl image sbom --insecure-skip-tls-verify -e $ROX_CENTRAL_ENDPOINT --image $(params.image) | jq .
