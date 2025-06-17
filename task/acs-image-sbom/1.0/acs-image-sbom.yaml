@@ -59,7 +59,7 @@ spec:
         if [ "$(params.cyclonedxHostUrl)" = "ignore" ]; then
           echo "Export skipped"
         else
-          curl -X POST $(params.cyclonedxHostUrl)/v1/bom -H "Content-Type: application/vnd.cyclonedx+json; version=1.4" -H "Accept: */*" -d @/workspace/sbom.json -D /tmp/header.txt > /dev/null
+          curl -X POST $(params.cyclonedxHostUrl)/api/v2/bom -H "Content-Type: application/vnd.cyclonedx+json; version=1.4" -H "Accept: */*" -d @/workspace/sbom.json -D /tmp/header.txt > /dev/null
 
           LOCATION=$(cat /tmp/header.txt | grep location: | awk '{print $2}' | sed 's|http:|https:|g')
 
