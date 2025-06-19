@@ -65,9 +65,9 @@ spec:
           exit 0
         fi
 
-        export OIDC_TOKEN_ENDPOINT=$(cat $(workspaces.upload-sbom.path)/oidc_token_endpoint)
-        export OIDC_CLIENT_ID=$(cat $(workspaces.upload-sbom.path)/oidc_client_id)
-        export OIDC_CLIENT_SECRET=$(cat $(workspaces.upload-sbom.path)/oidc_client_secret)
+        export OIDC_TOKEN_ENDPOINT=$(cat $(workspaces.upload-sbom.path)/OIDC_TOKEN_ENDPOINT)
+        export OIDC_CLIENT_ID=$(cat $(workspaces.upload-sbom.path)/OIDC_CLIENT_ID)
+        export OIDC_CLIENT_SECRET=$(cat $(workspaces.upload-sbom.path)/OIDC_CLIENT_SECRET)
 
         if [ "$(params.cyclonedxHostUrl)" = "ignore" ]; then
           echo "Export skipped"
