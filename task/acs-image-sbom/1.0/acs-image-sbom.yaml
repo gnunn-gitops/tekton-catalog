@@ -53,6 +53,8 @@ spec:
 
         roxctl image sbom --insecure-skip-tls-verify -e $ROX_CENTRAL_ENDPOINT --image $(params.image) > /workspace/sbom.json
 
+        jq '.name = "$(params.image)"' /workspace/sbom.json > /workspace/renamed-sbom.json
+
         echo "Generated SBOM from ACS"
     - name: export-sbom
       image: quay.io/gnunn/tools:v4.18
@@ -86,7 +88,7 @@ spec:
           echo "Token"
           echo ${ACCESS_TOKEN}
 
-          curl -w "%{http_code}" -X POST $(params.cyclonedxHostUrl)/api/v2/sbom -H "Content-Type: application/vnd.cyclonedx+json; version=1.4" -H "Accept: */*" -H "Authorization: Bearer $ACCESS_TOKEN" -d @/workspace/sbom.json -D /tmp/header.txt
+          curl -w "%{http_code}" -X POST $(params.cyclonedxHostUrl)/api/v2/sbom -H "Content-Type: application/vnd.cyclonedx+json; version=1.4" -H "Accept: */*" -H "Authorization: Bearer $ACCESS_TOKEN" -d @/workspace/renamed-sbom.json -D /tmp/header.txt
 
           LOCATION=$(cat /tmp/header.txt | grep location: | awk '{print $2}' | sed 's|http:|https:|g')
 
