@@ -55,7 +55,7 @@ spec:
         roxctl image sbom --insecure-skip-tls-verify -e $ROX_CENTRAL_ENDPOINT --image $(params.image) > /workspace/sbom.json
         cat workspace/sbom.json | jq .
     - name: export-sbom
-      image: 'ubi9/ubi'
+      image: quay.io/gnunn/tools:v4.18
       script: >
         set +x
 
