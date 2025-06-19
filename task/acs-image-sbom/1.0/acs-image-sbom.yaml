@@ -52,7 +52,6 @@ spec:
         export ROX_API_TOKEN=$(cat $(workspaces.acs-central.path)/rox_api_token)
 
         roxctl image sbom --insecure-skip-tls-verify -e $ROX_CENTRAL_ENDPOINT --image $(params.image) > /workspace/sbom.json
-        # cat workspace/sbom.json | jq .
     - name: export-sbom
       image: quay.io/gnunn/tools:v4.18
       script: >
@@ -66,6 +65,16 @@ spec:
         if [ "$(params.cyclonedxHostUrl)" = "ignore" ]; then
           echo "Export skipped"
         else
+
+          echo "Retrieving token from ${OIDC_TOKEN_ENDPOINT} for client ${OIDC_CLIENT_ID}"
+
+          echo "Debug curl"
+          curl -sL --location "${OIDC_TOKEN_ENDPOINT}" \
+            --header "Content-Type: application/x-www-form-urlencoded" \
+            --data-urlencode "grant_type=client_credentials" \
+            --data-urlencode "client_id=${OIDC_CLIENT_ID}" \
+            --data-urlencode "client_secret=${OIDC_CLIENT_SECRET}" \
+            --data-urlencode "scope=openid"
 
           JWT_TOKEN=$(curl -sL --location "${OIDC_TOKEN_ENDPOINT}" \
             --header "Content-Type: application/x-www-form-urlencoded" \
