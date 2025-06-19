@@ -79,9 +79,9 @@ spec:
             --data-urlencode "grant_type=client_credentials" \
             --data-urlencode "client_id=${OIDC_CLIENT_ID}" \
             --data-urlencode "client_secret=${OIDC_CLIENT_SECRET}" \
-            --data-urlencode "scope=openid" | jq -r '.access_token')
+            --data-urlencode "scope=openid" | jq -r '.id_token')
 
-          echo "Access Token"
+          echo "Token"
           echo ${JWT_TOKEN}
 
           curl -w "%{http_code}" -X POST $(params.cyclonedxHostUrl)/api/v2/bom -H "Content-Type: application/vnd.cyclonedx+json; version=1.4" -H "Accept: */*" -H "Authorization: Bearer ${JWT_TOKEN}" -d @/workspace/sbom.json -D /tmp/header.txt
