@@ -67,7 +67,6 @@ spec:
 
         export OIDC_TOKEN_ENDPOINT=$(cat $(workspaces.upload-sbom.path)/OIDC_TOKEN_ENDPOINT)
         export OIDC_CLIENT_ID=$(cat $(workspaces.upload-sbom.path)/OIDC_CLIENT_ID)
-        # export OIDC_CLIENT_SECRET=$(cat $(workspaces.upload-sbom.path)/OIDC_CLIENT_SECRET)
         export OIDC_USER=$(cat $(workspaces.upload-sbom.path)/OIDC_USER)
         export OIDC_PASSWORD=$(cat $(workspaces.upload-sbom.path)/OIDC_PASSWORD)
 
@@ -84,13 +83,10 @@ spec:
             --data-urlencode "grant_type=password" \
             --data-urlencode "scope=openid" | jq -r '.access_token')
 
-            # --data-urlencode "client_secret=${OIDC_CLIENT_SECRET}" \
-
-
           echo "Token"
           echo ${ACCESS_TOKEN}
 
-          curl -w "%{http_code}" -X POST $(params.cyclonedxHostUrl)/api/v2/bom -H "Content-Type: application/vnd.cyclonedx+json; version=1.4" -H "Accept: */*" -H "Authorization: Bearer $ACCESS_TOKEN" -d @/workspace/sbom.json -D /tmp/header.txt
+          curl -w "%{http_code}" -X POST $(params.cyclonedxHostUrl)/api/v2/sbom -H "Content-Type: application/vnd.cyclonedx+json; version=1.4" -H "Accept: */*" -H "Authorization: Bearer $ACCESS_TOKEN" -d @/workspace/sbom.json -D /tmp/header.txt
 
           LOCATION=$(cat /tmp/header.txt | grep location: | awk '{print $2}' | sed 's|http:|https:|g')
 
