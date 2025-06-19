@@ -51,7 +51,6 @@ spec:
         export ROX_CENTRAL_ENDPOINT=$(cat $(workspaces.acs-central.path)/rox_central_endpoint)
         export ROX_API_TOKEN=$(cat $(workspaces.acs-central.path)/rox_api_token)
 
-        echo "Generating SBOM using endpoint ${ROX_CENTRAL_ENDPOINT}"
         roxctl image sbom --insecure-skip-tls-verify -e $ROX_CENTRAL_ENDPOINT --image $(params.image) > /workspace/sbom.json
         cat workspace/sbom.json | jq .
     - name: export-sbom
@@ -70,7 +69,7 @@ spec:
           --data-urlencode "client_secret=${OIDC_CLIENT_SECRET}" \
           --data-urlencode "scope=openid" | jq -r '.id_token')
 
-          curl -X POST $(params.cyclonedxHostUrl)/api/v2/bom -H "Content-Type: application/vnd.cyclonedx+json; version=1.4" -H "Accept: */*" -H "Authorization: Bearer ${JWT_TOKEN}" -d @/workspace/sbom.json -D /tmp/header.txt
+          curl -w "%{http_code}" -X POST $(params.cyclonedxHostUrl)/api/v2/bom -H "Content-Type: application/vnd.cyclonedx+json; version=1.4" -H "Accept: */*" -H "Authorization: Bearer ${JWT_TOKEN}" -d @/workspace/sbom.json -D /tmp/header.txt
 
           LOCATION=$(cat /tmp/header.txt | grep location: | awk '{print $2}' | sed 's|http:|https:|g')
 
