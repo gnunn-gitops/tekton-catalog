@@ -74,17 +74,17 @@ spec:
         else
           echo "Retrieving token from ${OIDC_TOKEN_ENDPOINT} for client ${OIDC_CLIENT_ID}"
 
-          JWT_TOKEN=$(curl -sL --location "${OIDC_TOKEN_ENDPOINT}" \
+          ACCESS_TOKEN=$(curl -sL --location "${OIDC_TOKEN_ENDPOINT}" \
             --header "Content-Type: application/x-www-form-urlencoded" \
             --data-urlencode "grant_type=client_credentials" \
             --data-urlencode "client_id=${OIDC_CLIENT_ID}" \
             --data-urlencode "client_secret=${OIDC_CLIENT_SECRET}" \
-            --data-urlencode "scope=openid" | jq -r '.id_token')
+            --data-urlencode "scope=openid" | jq -r '.access_token')
 
           echo "Token"
-          echo ${JWT_TOKEN}
+          echo ${ACCESS_TOKEN}
 
-          curl -w "%{http_code}" -X POST $(params.cyclonedxHostUrl)/api/v2/bom -H "Content-Type: application/vnd.cyclonedx+json; version=1.4" -H "Accept: */*" -H "Authorization: Bearer ${JWT_TOKEN}" -d @/workspace/sbom.json -D /tmp/header.txt
+          curl -w "%{http_code}" -X POST $(params.cyclonedxHostUrl)/api/v2/bom -H "Content-Type: application/vnd.cyclonedx+json; version=1.4" -H "Accept: */*" -H "Authorization: Bearer $ACCESS_TOKEN" -d @/workspace/sbom.json -D /tmp/header.txt
 
           LOCATION=$(cat /tmp/header.txt | grep location: | awk '{print $2}' | sed 's|http:|https:|g')
 
