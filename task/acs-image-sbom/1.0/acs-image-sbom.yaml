@@ -52,11 +52,16 @@ spec:
         export ROX_API_TOKEN=$(cat $(workspaces.acs-central.path)/rox_api_token)
 
         roxctl image sbom --insecure-skip-tls-verify -e $ROX_CENTRAL_ENDPOINT --image $(params.image) > /workspace/sbom.json
-        cat workspace/sbom.json | jq .
+        # cat workspace/sbom.json | jq .
     - name: export-sbom
       image: quay.io/gnunn/tools:v4.18
       script: >
         set +x
+
+        if [ $(workspaces.upload-sbom.bound) == "false" ] ; then
+          echo "No upload-sbom workspace was bound to task"
+          exit 0
+        fi
 
         if [ "$(params.cyclonedxHostUrl)" = "ignore" ]; then
           echo "Export skipped"
@@ -67,8 +72,9 @@ spec:
           --data-urlencode "grant_type=client_credentials" \
           --data-urlencode "client_id=${OIDC_CLIENT_ID}" \
           --data-urlencode "client_secret=${OIDC_CLIENT_SECRET}" \
-          --data-urlencode "scope=openid" | jq -r '.id_token')
+          --data-urlencode "scope=openid" | jq -r '.access_token')
 
+          echo "Access Token"
           echo ${JWT_TOKEN}
 
           curl -w "%{http_code}" -X POST $(params.cyclonedxHostUrl)/api/v2/bom -H "Content-Type: application/vnd.cyclonedx+json; version=1.4" -H "Accept: */*" -H "Authorization: Bearer ${JWT_TOKEN}" -d @/workspace/sbom.json -D /tmp/header.txt
