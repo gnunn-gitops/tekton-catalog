@@ -64,6 +64,9 @@ spec:
       value: $(workspaces.maven_settings.path)
     - name: WORKSPACES_MAVEN_SETTINGS_BOUND
       value: $(workspaces.maven_settings.bound)
+    volumeMounts:
+    - mountPath: /home/tekton/.m2
+      name: m2_cache
   steps:
   - env:
     - name: HOME
