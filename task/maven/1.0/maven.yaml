@@ -127,4 +127,3 @@ spec:
   - description: A PVC to cache the M2 directory of Maven
     name: m2_cache
     optional: true
-    mountPath: /home/tekton/.m2
