@@ -61,7 +61,7 @@ spec:
         cosign initialize
 
         echo "cosign tree for signature information"
-        cosign tree --new-bundle-format $(params.image_url)
+        cosign tree $(params.image_url)
 
         echo "Verify image"
         retries=$(params.retries)
