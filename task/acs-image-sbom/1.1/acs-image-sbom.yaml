@@ -22,6 +22,9 @@ spec:
       type: string
       description: The URL of CycloneDX where the SBOM should be exported. If not set then this step will be ignored.
       default: ignore
+    - name: api-version
+      description: The version of the SBOM API to use
+      default: v3
   results:
     - description: The url location of the generate SBOM
       name: sbomUrl
@@ -85,10 +88,9 @@ spec:
             --data-urlencode "grant_type=password" \
             --data-urlencode "scope=openid" | jq -r '.access_token')
 
-          echo "Token"
-          echo ${ACCESS_TOKEN}
+          echo "Uploading SBOM to $(params.cyclonedxHostUrl)/api/$(params.api-version)/sbom"
 
-          curl -w "%{http_code}" -X POST $(params.cyclonedxHostUrl)/api/v3/sbom -H "Content-Type: application/vnd.cyclonedx+json; version=1.4" -H "Accept: */*" -H "Authorization: Bearer $ACCESS_TOKEN" -d @/workspace/renamed-sbom.json -D /tmp/header.txt
+          curl -w "%{http_code}" -X POST $(params.cyclonedxHostUrl)/api/$(params.api-version)/sbom -H "Content-Type: application/vnd.cyclonedx+json; version=1.4" -H "Accept: */*" -H "Authorization: Bearer $ACCESS_TOKEN" -d @/workspace/renamed-sbom.json -D /tmp/header.txt
 
           LOCATION=$(cat /tmp/header.txt | grep location: | awk '{print $2}' | sed 's|http:|https:|g')
 
