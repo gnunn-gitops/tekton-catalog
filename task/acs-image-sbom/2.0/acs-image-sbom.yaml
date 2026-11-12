@@ -1,0 +1,98 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: acs-image-sbom
+  namespace: pipeline-demo
+  labels:
+    app.kubernetes.io/version: "1.0"
+  annotations:
+    tekton.dev/pipelines.minVersion: "0.17.0"
+    tekton.dev/categories: Security
+    tekton.dev/tags: security
+    tekton.dev/displayName: "ACS Image SBOM"
+    tekton.dev/platforms: "linux/amd64"
+spec:
+  description: >-
+    This task generates an image SBOM using ACS and roxctl.
+  params:
+    - name: image
+      type: string
+      description: Full name of image to scan (example -- gcr.io/rox/sample:5.0-rc1)
+    - name: cyclonedxHostUrl
+      type: string
+      description: The URL of CycloneDX where the SBOM should be exported. If not set then this step will be ignored.
+      default: ignore
+  results:
+    - description: The url location of the generate SBOM
+      name: sbomUrl
+  workspaces:
+    - name: acs-central
+      description: The secret with the central endpoint (rox-central_endpoint) and api token (rox_api_token)
+      optional: true
+    - name: upload-sbom
+      description: The secret to use to obtain an OIDC token from IdP to upload SBOM with
+      optional: true
+  stepTemplate:
+    env:
+      - name: "HOME"
+        value: "/tekton/home"
+  steps:
+    - name: rox-generate-sbom
+      image: quay.io/gnunn/tools:v4.18
+      script: |
+        #!/usr/bin/env bash
+        set +x
+
+        if [ $(workspaces.acs-central.bound) == "false" ] ; then
+          echo "No acs-central workspace was bound to task"
+          exit 0
+        fi
+
+        export ROX_CENTRAL_ENDPOINT=$(cat $(workspaces.acs-central.path)/rox_central_endpoint)
+        export ROX_API_TOKEN=$(cat $(workspaces.acs-central.path)/rox_api_token)
+
+        roxctl image sbom --insecure-skip-tls-verify -e $ROX_CENTRAL_ENDPOINT --image $(params.image) > /workspace/sbom.json
+
+        jq '.name = "$(params.image)"' /workspace/sbom.json > /workspace/renamed-sbom.json
+
+        echo "Generated SBOM from ACS"
+    - name: export-sbom
+      image: quay.io/gnunn/tools:v4.18
+      script: |
+        #!/usr/bin/env bash
+        set +x
+
+        if [ $(workspaces.upload-sbom.bound) == "false" ] ; then
+          echo "No upload-sbom workspace was bound to task"
+          exit 0
+        fi
+
+        export OIDC_TOKEN_ENDPOINT=$(cat $(workspaces.upload-sbom.path)/OIDC_TOKEN_ENDPOINT)
+        export OIDC_CLIENT_ID=$(cat $(workspaces.upload-sbom.path)/OIDC_CLIENT_ID)
+        export OIDC_USER=$(cat $(workspaces.upload-sbom.path)/OIDC_USER)
+        export OIDC_PASSWORD=$(cat $(workspaces.upload-sbom.path)/OIDC_PASSWORD)
+
+        if [ "$(params.cyclonedxHostUrl)" = "ignore" ]; then
+          echo "Export skipped"
+        else
+          echo "Retrieving token from ${OIDC_TOKEN_ENDPOINT} for client ${OIDC_CLIENT_ID}"
+
+          ACCESS_TOKEN=$(curl -sL --location "${OIDC_TOKEN_ENDPOINT}" \
+            --header "Content-Type: application/x-www-form-urlencoded" \
+            --data-urlencode "client_id=${OIDC_CLIENT_ID}" \
+            --data-urlencode "username=${OIDC_USER}" \
+            --data-urlencode "password=${OIDC_PASSWORD}" \
+            --data-urlencode "grant_type=password" \
+            --data-urlencode "scope=openid" | jq -r '.access_token')
+
+          echo "Token"
+          echo ${ACCESS_TOKEN}
+
+          curl -w "%{http_code}" -X POST $(params.cyclonedxHostUrl)/api/v3/sbom -H "Content-Type: application/vnd.cyclonedx+json; version=1.4" -H "Accept: */*" -H "Authorization: Bearer $ACCESS_TOKEN" -d @/workspace/renamed-sbom.json -D /tmp/header.txt
+
+          LOCATION=$(cat /tmp/header.txt | grep location: | awk '{print $2}' | sed 's|http:|https:|g')
+
+          echo $LOCATION
+
+          printf "%s" "$LOCATION" > "$(results.sbomUrl.path)"
+        fi
