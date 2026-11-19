@@ -1,0 +1,199 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: acs-image-sbom
+  namespace: pipeline-demo
+  labels:
+    app.kubernetes.io/version: "1.2"
+  annotations:
+    tekton.dev/pipelines.minVersion: "0.17.0"
+    tekton.dev/categories: Security
+    tekton.dev/tags: security
+    tekton.dev/displayName: "ACS Image SBOM"
+    tekton.dev/platforms: "linux/amd64"
+spec:
+  description: >-
+    This task generates an image SBOM using ACS and roxctl.
+  params:
+    - name: image
+      type: string
+      description: Full name of image to scan (example -- gcr.io/rox/sample:5.0-rc1)
+    - name: cyclonedxHostUrl
+      type: string
+      description: The URL of CycloneDX where the SBOM should be exported. If not set then this step will be ignored.
+      default: ignore
+    - name: api-version
+      description: The version of the SBOM API to use
+      default: v3
+    - name: format
+      type: string
+      description: >-
+        Optional format of the uploaded document, sent as the "format" query parameter (example -- cyclonedx).
+        Valid values are osv, csaf, cve, nvd, spdx, cyclonedx, clearlydefinedcuration, clearlydefined,
+        cwecatalog, cisakev, advisory, sbom and unknown. Leave empty to let the server detect the format.
+      default: ""
+    - name: groups
+      type: string
+      description: >-
+        Optional comma separated list of group IDs to assign the SBOM to after ingestion (example -- team-a,team-b).
+        Each ID is sent as a separate "group" query parameter. An invalid group ID fails the upload with a
+        400 Bad Request and the SBOM is not ingested. Leave empty to omit.
+      default: ""
+    - name: labels
+      type: string
+      description: >-
+        Optional comma separated list of key=value labels (example -- type=container,env=prod). Each pair is
+        sent as its own "labels.<key>" query parameter, as required by the upload endpoint. Leave empty to omit.
+      default: ""
+    - name: cache
+      type: string
+      description: >-
+        Optional control over awaiting the load of the document into the analysis graph cache, sent as the
+        "cache" query parameter. Valid values are skip, queue and wait. Leave empty to use the server default.
+      default: ""
+  results:
+    - description: The url location of the generate SBOM
+      name: sbomUrl
+  workspaces:
+    - name: acs-central
+      description: The secret with the central endpoint (rox-central_endpoint) and api token (rox_api_token)
+      optional: true
+    - name: upload-sbom
+      description: The secret to use to obtain an OIDC token from IdP to upload SBOM with
+      optional: true
+  stepTemplate:
+    env:
+      - name: "HOME"
+        value: "/tekton/home"
+  steps:
+    - name: rox-generate-sbom
+      image: quay.io/gnunn/tools:v4.18
+      script: |
+        #!/usr/bin/env bash
+        set +x
+
+        if [ $(workspaces.acs-central.bound) == "false" ] ; then
+          echo "No acs-central workspace was bound to task"
+          exit 0
+        fi
+
+        export ROX_CENTRAL_ENDPOINT=$(cat $(workspaces.acs-central.path)/rox_central_endpoint)
+        export ROX_API_TOKEN=$(cat $(workspaces.acs-central.path)/rox_api_token)
+
+        roxctl image sbom --insecure-skip-tls-verify -e $ROX_CENTRAL_ENDPOINT --image $(params.image) > /workspace/sbom.json
+
+        jq '.name = "$(params.image)"' /workspace/sbom.json > /workspace/renamed-sbom.json
+
+        echo "Generated SBOM from ACS"
+    - name: export-sbom
+      image: quay.io/gnunn/tools:v4.18
+      env:
+        - name: SBOM_FORMAT
+          value: $(params.format)
+        - name: SBOM_GROUPS
+          value: $(params.groups)
+        - name: SBOM_LABELS
+          value: $(params.labels)
+        - name: SBOM_CACHE
+          value: $(params.cache)
+      script: |
+        #!/usr/bin/env bash
+        set +x
+
+        if [ $(workspaces.upload-sbom.bound) == "false" ] ; then
+          echo "No upload-sbom workspace was bound to task"
+          exit 0
+        fi
+
+        export OIDC_TOKEN_ENDPOINT=$(cat $(workspaces.upload-sbom.path)/OIDC_TOKEN_ENDPOINT)
+        export OIDC_CLIENT_ID=$(cat $(workspaces.upload-sbom.path)/OIDC_CLIENT_ID)
+        export OIDC_USER=$(cat $(workspaces.upload-sbom.path)/OIDC_USER)
+        export OIDC_PASSWORD=$(cat $(workspaces.upload-sbom.path)/OIDC_PASSWORD)
+
+        if [ "$(params.cyclonedxHostUrl)" = "ignore" ]; then
+          echo "Export skipped"
+        else
+          echo "Retrieving token from ${OIDC_TOKEN_ENDPOINT} for client ${OIDC_CLIENT_ID}"
+
+          ACCESS_TOKEN=$(curl -sL --location "${OIDC_TOKEN_ENDPOINT}" \
+            --header "Content-Type: application/x-www-form-urlencoded" \
+            --data-urlencode "client_id=${OIDC_CLIENT_ID}" \
+            --data-urlencode "username=${OIDC_USER}" \
+            --data-urlencode "password=${OIDC_PASSWORD}" \
+            --data-urlencode "grant_type=password" \
+            --data-urlencode "scope=openid" | jq -r '.access_token')
+
+          # Build the optional query string. Keys and values are URL encoded individually.
+          QUERY=""
+
+          urlencode() {
+            printf '%s' "$1" | jq -sRr @uri
+          }
+
+          trim() {
+            printf '%s' "$1" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
+          }
+
+          append_query() {
+            if [ -z "$QUERY" ]; then
+              QUERY="?${1}=${2}"
+            else
+              QUERY="${QUERY}&${1}=${2}"
+            fi
+          }
+
+          # A single "format" query parameter
+          if [ -n "$SBOM_FORMAT" ]; then
+            append_query "format" "$(urlencode "$(trim "$SBOM_FORMAT")")"
+          fi
+
+          # A single "cache" query parameter
+          if [ -n "$SBOM_CACHE" ]; then
+            append_query "cache" "$(urlencode "$(trim "$SBOM_CACHE")")"
+          fi
+
+          # One "group" query parameter per group ID
+          if [ -n "$SBOM_GROUPS" ]; then
+            IFS=',' read -ra GROUP_LIST <<< "$SBOM_GROUPS"
+            for GROUP in "${GROUP_LIST[@]}"; do
+              GROUP=$(trim "$GROUP")
+              if [ -n "$GROUP" ]; then
+                append_query "group" "$(urlencode "$GROUP")"
+              fi
+            done
+          fi
+
+          # One "labels.<key>" query parameter per key=value pair
+          if [ -n "$SBOM_LABELS" ]; then
+            IFS=',' read -ra LABEL_LIST <<< "$SBOM_LABELS"
+            for LABEL in "${LABEL_LIST[@]}"; do
+              LABEL=$(trim "$LABEL")
+              if [ -z "$LABEL" ]; then
+                continue
+              fi
+              if [[ "$LABEL" != *"="* ]]; then
+                echo "Invalid label '${LABEL}', expected the form key=value"
+                exit 1
+              fi
+              LABEL_KEY=$(trim "${LABEL%%=*}")
+              LABEL_VALUE=$(trim "${LABEL#*=}")
+              if [ -z "$LABEL_KEY" ]; then
+                echo "Invalid label '${LABEL}', the key must not be empty"
+                exit 1
+              fi
+              append_query "labels.$(urlencode "$LABEL_KEY")" "$(urlencode "$LABEL_VALUE")"
+            done
+          fi
+
+          SBOM_URL="$(params.cyclonedxHostUrl)/api/$(params.api-version)/sbom${QUERY}"
+
+          echo "Uploading SBOM to ${SBOM_URL}"
+
+          curl -w "%{http_code}" -X POST "${SBOM_URL}" -H "Content-Type: application/vnd.cyclonedx+json; version=1.4" -H "Accept: */*" -H "Authorization: Bearer $ACCESS_TOKEN" -d @/workspace/renamed-sbom.json -D /tmp/header.txt
+
+          LOCATION=$(cat /tmp/header.txt | grep location: | awk '{print $2}' | sed 's|http:|https:|g')
+
+          echo $LOCATION
+
+          printf "%s" "$LOCATION" > "$(results.sbomUrl.path)"
+        fi
